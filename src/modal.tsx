@@ -14,6 +14,7 @@ import {
   View,
   ViewStyle,
   ViewProps,
+  AppState,
 } from 'react-native';
 import * as PropTypes from 'prop-types';
 import * as animatable from 'react-native-animatable';
@@ -48,6 +49,7 @@ type State = {
   deviceHeight: number;
   isSwipeable: boolean;
   pan: OrNull<Animated.ValueXY>;
+  appState: OrNull<object>;
 };
 
 export interface ModalProps extends ViewProps {
@@ -201,6 +203,7 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
     deviceHeight: Dimensions.get('screen').height,
     isSwipeable: !!this.props.swipeDirection,
     pan: null,
+    appState: null,
   };
 
   isTransitioning = false;
@@ -251,6 +254,7 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
         '`<Modal onSwipe="..." />` is deprecated and will be removed starting from 13.0.0. Use `<Modal onSwipeComplete="..." />` instead.',
       );
     }
+    AppState.addEventListener('change', this.handleAppStateChange);
     DeviceEventEmitter.addListener(
       'didUpdateDimensions',
       this.handleDimensionsUpdate,
@@ -261,6 +265,7 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
   }
 
   componentWillUnmount() {
+    AppState.removeEventListener('change', this.handleAppStateChange);
     DeviceEventEmitter.removeListener(
       'didUpdateDimensions',
       this.handleDimensionsUpdate,
@@ -561,6 +566,14 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
         this.setState({deviceWidth, deviceHeight});
       }
     }
+  };
+
+  handleAppStateChange = (nextAppState) => {
+    const { appState, pan } = this.state;
+    if (appState && appState.match(/inactive|background/) && nextAppState === 'active') {
+        pan?.setValue({ x: 0, y: 0 });
+    }
+    this.setState({ appState: nextAppState });
   };
 
   open = () => {
